@@ -209,10 +209,64 @@ struct BookDetailView: View {
         .task {
             await loadAudio()
         }
+        .onDisappear {
+            // Save position immediately when navigating away
+            let currentPos = audioPlayer.currentPosition
+            if currentPos > 0 {
+                // Use synchronous save to ensure it completes
+                Task.detached(priority: .high) {
+                    try? await DatabaseManager.shared.database.write { db in
+                        if var freshBook = try Book
+                            .filter(Book.Columns.contentHash == book.contentHash)
+                            .fetchOne(db) {
+                            freshBook.lastPositionSeconds = currentPos
+                            freshBook.lastTimePlayed = Date()
+                            freshBook.updatedAt = Date()
+                            try freshBook.update(db)
+                        }
+                    }
+                }
+            }
+            // Stop playback
+            audioPlayer.stop()
+        }
         .onChange(of: audioPlayer.currentPosition) { _, newPosition in
-            // Save position periodically
-            if Int(newPosition) % 10 == 0 {
-                viewModel.updatePosition(for: book, position: newPosition)
+            // Save position periodically while playing
+            if Int(newPosition) % 10 == 0 && newPosition > 0 {
+                savePosition(newPosition)
+            }
+        }
+    }
+    
+    // MARK: - Position Saving
+    
+    private func savePosition(_ position: Double) {
+        Task(priority: .utility) {
+            try? await DatabaseManager.shared.database.write { db in
+                if var freshBook = try Book
+                    .filter(Book.Columns.contentHash == book.contentHash)
+                    .fetchOne(db) {
+                    freshBook.lastPositionSeconds = position
+                    freshBook.lastTimePlayed = Date()
+                    freshBook.updatedAt = Date()
+                    try freshBook.update(db)
+                }
+            }
+        }
+    }
+    
+    private func savePositionImmediately(_ position: Double) {
+        // Use detached task with high priority for immediate save
+        Task.detached(priority: .high) {
+            try? await DatabaseManager.shared.database.write { db in
+                if var freshBook = try Book
+                    .filter(Book.Columns.contentHash == book.contentHash)
+                    .fetchOne(db) {
+                    freshBook.lastPositionSeconds = position
+                    freshBook.lastTimePlayed = Date()
+                    freshBook.updatedAt = Date()
+                    try freshBook.update(db)
+                }
             }
         }
     }
@@ -264,6 +318,11 @@ struct BookDetailView: View {
             
             // Load audio with fresh book data (includes latest saved position)
             try audioPlayer.load(book: freshBook, fileURL: url)
+            
+            // Hook up immediate position save callback
+            audioPlayer.onPositionSave = { [weak self] position in
+                self?.savePositionImmediately(position)
+            }
             
             await MainActor.run {
                 fileURL = url

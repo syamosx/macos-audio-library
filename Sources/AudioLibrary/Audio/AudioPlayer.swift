@@ -31,6 +31,7 @@ class AudioPlayer: NSObject, ObservableObject {
     // Callbacks
     var onPositionUpdate: ((Double) -> Void)?
     var onPlaybackFinished: (() -> Void)?
+    var onPositionSave: ((Double) -> Void)?  // Callback to save position to DB
     
     // MARK: - Init/Deinit
     
@@ -145,10 +146,8 @@ class AudioPlayer: NSObject, ObservableObject {
     }
     
     private func savePosition() {
-        guard let book = currentBook else { return }
-        
-        // Save via view model (will be called from BookDetailView)
-        // Or we could inject a callback here
+        // Trigger callback to save position immediately
+        onPositionSave?(currentPosition)
         print("💾 Saving position: \(formatTime(currentPosition))")
     }
     
