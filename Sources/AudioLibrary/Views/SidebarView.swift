@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Binding var selectedSection: SidebarSection?
+    let viewModel: LibraryViewModel
     
     var body: some View {
         List(SidebarSection.allCases, selection: $selectedSection) { section in

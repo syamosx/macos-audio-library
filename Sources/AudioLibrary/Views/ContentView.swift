@@ -14,15 +14,19 @@ struct ContentView: View {
     
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            // Sidebar
-            SidebarView(selectedSection: $selectedSection)
+            // Sidebar (left column)
+            SidebarView(selectedSection: $selectedSection, viewModel: viewModel)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
-        } detail: {
-            // Detail view based on selected section
-            DetailContentView(
+        } content: {
+            // Library content (middle column)
+            LibraryContentView(
                 selectedSection: selectedSection,
                 viewModel: viewModel
             )
+            .navigationSplitViewColumnWidth(min: 250, ideal: 350, max: 500)
+        } detail: {
+            // Player (right column - persistent)
+            PlayerMainView(viewModel: viewModel)
         }
         .navigationTitle("Audio Library")
     }
@@ -49,9 +53,9 @@ enum SidebarSection: String, Identifiable, CaseIterable {
     }
 }
 
-// MARK: - Detail Content Router
+// MARK: - Library Content (Middle Column)
 
-struct DetailContentView: View {
+struct LibraryContentView: View {
     let selectedSection: SidebarSection?
     let viewModel: LibraryViewModel
     
