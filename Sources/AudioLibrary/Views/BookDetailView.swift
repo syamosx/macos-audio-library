@@ -320,8 +320,19 @@ struct BookDetailView: View {
             try audioPlayer.load(book: freshBook, fileURL: url)
             
             // Hook up immediate position save callback
-            audioPlayer.onPositionSave = { [weak self] position in
-                self?.savePositionImmediately(position)
+            audioPlayer.onPositionSave = { [book = book.contentHash] position in
+                Task.detached(priority: .high) {
+                    try? await DatabaseManager.shared.database.write { db in
+                        if var freshBook = try Book
+                            .filter(Book.Columns.contentHash == book)
+                            .fetchOne(db) {
+                            freshBook.lastPositionSeconds = position
+                            freshBook.lastTimePlayed = Date()
+                            freshBook.updatedAt = Date()
+                            try freshBook.update(db)
+                        }
+                    }
+                }
             }
             
             await MainActor.run {
