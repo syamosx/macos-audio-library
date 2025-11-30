@@ -1,185 +1,167 @@
-# Audio Library - macOS
+# macOS Audio Library
 
-A modern macOS audio library app for managing and playing audiobooks, built with SwiftUI.
+> Modern SwiftUI audio library for macOS — **no Xcode required!**
 
-## Phase 1: UI & Scaffolding ✅
+A beautiful, offline-first audiobook library built with the latest SwiftUI best practices for macOS Sequoia. Designed for personal use with local files.
 
-This is **Phase 1** of the implementation - a fully functional UI prototype with mock data.
+[![Swift](https://img.shields.io/badge/Swift-6.2.1-orange.svg)](https://swift.org)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue.svg)](https://www.apple.com/macos/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-### Current Features
+## ✨ Features (Phase 1)
 
-- ✅ Modern SwiftUI NavigationSplitView architecture
-- ✅ Sidebar navigation (Books, Extra Private, Recently Played)
-- ✅ Books list with search and sort functionality
-- ✅ Detailed book view with playback controls (UI only)
-- ✅ Recently played view with progress tracking
-- ✅ Mock data for 5 sample audiobooks
-- ✅ Progress indicators and metadata display
-- ✅ macOS Sequoia design guidelines
+- 🎨 **Modern UI** — NavigationSplitView with adaptive 3-column layout
+- 📚 **Books Library** — Search and sort your audiobook collection
+- 🎵 **Playback Controls** — UI for play/pause, skip, and speed control
+- 📊 **Progress Tracking** — Visual progress bars and position saving
+- 🕐 **Recently Played** — Track your listening history
+- 🔒 **Extra Private** — Separate section for private content
+- 🚀 **No Xcode** — Builds with Swift CLI (`swift build`)
 
-### Architecture
+## 🚀 Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/syamosx/macos-audio-library.git
+cd macos-audio-library
+
+# Run the app
+./run.sh
+```
+
+That's it! The app window opens with your library ready to use.
+
+## 📋 Requirements
+
+- macOS 14.0+ (Sonoma or later)
+- Swift 5.9+ Command Line Tools
+  - Install: `xcode-select --install`
+- **No Xcode required!**
+
+## 🏗️ Architecture
 
 **Design Pattern**: MVVM with @Observable
 
-- **Models**: `Book`, `Bookmark` (Phase 1)
-- **ViewModels**: `LibraryViewModel` (using @Observable macro)
-- **Views**: 
-  - `ContentView` - Main NavigationSplitView container
-  - `SidebarView` - Navigation sidebar
-  - `BooksListView` - List of all books with search/sort
-  - `BookDetailView` - Detailed book view with playback controls
-  - `RecentlyPlayedView` - Recently played books
-  - `ExtraPrivateView` - Placeholder for private section
+- **Modern SwiftUI** — NavigationSplitView, @Observable macro, type-safe navigation
+- **No External Dependencies** (Phase 1) — Pure Swift + SwiftUI
+- **SPM Structure** — Standard Swift Package Manager layout
+- **CLI Builds** — Works with `swift build`, no Xcode needed
 
 ### Project Structure
 
 ```
-minimal mac player/
-├── Package.swift                  # SPM configuration
-├── run.sh                        # Quick run script
-├── Sources/
-│   └── AudioLibrary/
-│       ├── AudioLibraryApp.swift          # App entry point
-│       ├── Models/
-│       │   ├── Book.swift                 # Book data model
-│       │   └── Bookmark.swift             # Bookmark data model
-│       ├── ViewModels/
-│       │   └── LibraryViewModel.swift     # Main view model with mock data
-│       └── Views/
-│           ├── ContentView.swift          # Main container with NavigationSplitView
-│           ├── SidebarView.swift          # Sidebar navigation
-│           ├── BooksListView.swift        # Books list with search/sort
-│           ├── BookDetailView.swift       # Book detail with playback UI
-│           ├── RecentlyPlayedView.swift   # Recently played books
-│           └── ExtraPrivateView.swift     # Private section placeholder
-├── README.md
-└── .gitignore
+Sources/AudioLibrary/
+├── AudioLibraryApp.swift      # Main app entry point
+├── Models/                    # Data models (Book, Bookmark)
+├── ViewModels/                # @Observable view models
+└── Views/                     # SwiftUI views (6 view components)
 ```
 
-## How to Run (No Xcode Required!)
+## 🎯 What Works
 
-This project uses **Swift Package Manager** and runs directly from the command line.
+- ✅ **Sidebar Navigation** — Books, Extra Private, Recently Played
+- ✅ **Books List** — Search by title/tags, sort by multiple criteria
+- ✅ **Book Detail View** — Comprehensive playback UI
+- ✅ **Progress Tracking** — Visual indicators and completion percentages
+- ✅ **Mock Data** — 5 sample audiobooks for testing
+- ✅ **Speed Control** — Dropdown menu (0.5× to 2.0×)
+- ✅ **Skip Controls** — Forward/backward 15 seconds
+- ✅ **Responsive Design** — Adapts to window size
 
-### Requirements
-- macOS 14.0+ (Sonoma or later)
-- Swift 5.9+ (Command Line Tools)
-  - Check: `swift --version`
-  - Install: `xcode-select --install` (if needed)
-
-### Quick Start
+## 🛠️ Development
 
 ```bash
-# Navigate to project directory
-cd "/Volumes/Partation Two/cash/Practical Things/minimal mac player"
-
-# Option 1: Use the run script
-./run.sh
-
-# Option 2: Build and run manually
+# Build only
 swift build
-swift run AudioLibrary
 
-# Option 3: Run directly (builds automatically)
+# Run the app
 swift run
-```
 
-The app window will launch with the UI and mock data ready to explore!
-
-### Development
-
-```bash
 # Clean build artifacts
 swift package clean
 
-# Build only (no run)
-swift build
-
 # Build for release (optimized)
 swift build -c release
-
-# Run release build
-swift run -c release
 ```
 
+### IDE Options
 
-## UI Features Demonstrated
+Use any editor you prefer:
+- VS Code with Swift extension
+- CLion with Swift plugin
+- Vim/Neovim with LSP
+- Any text editor + terminal
 
-### Books List
-- Search by title or tags
-- Sort by: Recently Played, Title, Date Added
-- Progress bars for partially completed books
-- Relative timestamps ("2 hours ago")
-- Import and Refresh toolbar buttons (placeholders)
+## 🗺️ Roadmap
 
-### Book Detail View
-- Album artwork placeholder
-- Metadata display (duration, file size, tags)
-- Playback controls:
-  - Play/Pause button
-  - Skip backward/forward 15 seconds
-  - Progress slider
-  - Speed control (0.5× to 2.0×)
-- Notes section
-- Bookmarks section (placeholder for Phase 4)
+### Phase 1: UI & Scaffolding ✅ (Complete)
+- Modern SwiftUI interface
+- Navigation and layout
+- Mock data for testing
 
-### Recently Played
-- Books sorted by last played time
-- Progress indicators
-- Position display (e.g., "2h 15m of 5h 30m")
-
-## Next Phases
-
-### Phase 2: Local DB & Models (Coming Next)
-- Add GRDB.swift dependency
-- Create SQLite database schema
-- Implement migrations
-- Replace mock data with real database queries
-- Implement CRUD operations
+### Phase 2: Database (Next)
+- SQLite with GRDB.swift
+- Persistent storage
+- CRUD operations
+- Migrations
 
 ### Phase 3: Playback & Import
-- Implement AudioPlayer with AVFoundation
+- AVFoundation audio playback
 - File import with NSOpenPanel
-- SHA-256 hashing with CryptoKit
-- Metadata extraction from audio files
-- Device state and path management
+- SHA-256 hashing for content identification
+- Metadata extraction
+- File path management
 
-### Phase 4: Bookmarks, Logs & Conflict Hooks
-- Full bookmark CRUD functionality
-- Event logging system
-- Local conflict resolution
+### Phase 4: Advanced Features
+- Bookmarks CRUD
+- Event logging
+- Conflict resolution
+- Sync preparation
 
-### Phase 5: Polish & Packaging
+### Phase 5: Polish & Distribution
 - Keyboard shortcuts
 - Accessibility improvements
-- App packaging and code signing
+- App packaging & code signing
 - Database backup/export
-- PowerSync migration preparation
 
-## Technologies Used
+## 📖 Documentation
 
-- **SwiftUI** - Modern declarative UI framework
-- **@Observable** - Latest state management (macOS 14+)
-- **NavigationSplitView** - Adaptive sidebar navigation
-- **MVVM** - Clean architecture pattern
-- **SF Symbols** - System icons
+- **[QUICKSTART.md](QUICKSTART.md)** — Common commands and quick reference
+- **[START_HERE.md](START_HERE.md)** — New user guide
+- **[PHASE1_SUMMARY.md](PHASE1_SUMMARY.md)** — Technical implementation details
 
-## Design Decisions
+## 🎨 Design Principles
 
-1. **NavigationSplitView**: Chosen over TabView for better macOS integration and adaptive layout
-2. **@Observable macro**: Modern replacement for ObservableObject with better performance
-3. **Mock data in ViewModel**: Allows UI testing without database dependency
-4. **Modular view structure**: Each view is self-contained and reusable
-5. **Type-safe navigation**: Using Swift's type system for navigation destinations
+Following macOS Sequoia best practices:
 
-## Requirements
+1. **NavigationSplitView** for native multi-column layout
+2. **@Observable macro** for performant state management
+3. **SF Symbols** for consistent iconography
+4. **ContentUnavailableView** for empty states
+5. **Native macOS styling** with proper colors and spacing
+6. **Keyboard-friendly** navigation and controls
 
-- macOS 14.0 (Sonoma) or later  
-- Swift 5.9+ Command Line Tools
-  - Check version: `swift --version`
-  - Install if needed: `xcode-select --install`
-- **No Xcode required!** Runs via Swift Package Manager
+## 🤝 Contributing
+
+This is currently a personal project, but feedback and suggestions are welcome! Feel free to:
+
+- Open an issue for bugs or feature requests
+- Share your ideas for improvements
+- Fork and experiment with your own versions
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
+
+Built with modern SwiftUI patterns based on:
+- Apple's SwiftUI documentation
+- macOS Human Interface Guidelines
+- Swift Package Manager best practices
 
 ---
 
+**Built with** ❤️ **and Swift 6.2.1**  
 **Status**: Phase 1 Complete ✅  
-**Next**: Phase 2 - Database Integration
+**Next**: Phase 2 — Database Integration
