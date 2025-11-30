@@ -13,8 +13,12 @@ struct BookDetailView: View {
     @Bindable var viewModel: LibraryViewModel
     
     @StateObject private var audioPlayer = AudioPlayer()
+    @StateObject private var bookmarkManager = BookmarkManager()
     @State private var fileURL: URL?
     @State private var loadError: String?
+    @State private var showingAddBookmark = false
+    @State private var showingEditBookmark = false
+    @State private var bookmarkToEdit: Bookmark?
     
     var body: some View {
         ScrollView {
@@ -173,7 +177,7 @@ struct BookDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 
-                // Bookmarks section (Phase 4)
+                // Bookmarks section
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Bookmarks")
@@ -182,21 +186,33 @@ struct BookDetailView: View {
                         Spacer()
                         
                         Button {
-                            // Phase 4: Add bookmark
-                            print("Add bookmark tapped")
+                            showingAddBookmark = true
                         } label: {
                             Label("Add Bookmark", systemImage: "bookmark.fill")
                         }
                         .disabled(fileURL == nil)
                     }
                     
-                    Text("No bookmarks yet")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    if bookmarkManager.bookmarks.isEmpty {
+                        Text("No bookmarks yet")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(bookmarkManager.bookmarks) { bookmark in
+                                BookmarkRowView(bookmark: bookmark, onJump: {
+                                    audioPlayer.seek(to: bookmark.positionSeconds)
+                                }, onEdit: {
+                                    bookmarkToEdit = bookmark
+                                    showingEditBookmark = true
+                                })
+                            }
+                        }
+                    }
                 }
                 .padding()
                 .background(Color(nsColor: .controlBackgroundColor))
@@ -208,6 +224,40 @@ struct BookDetailView: View {
         .navigationTitle(book.title)
         .task {
             await loadAudio()
+            await bookmarkManager.loadBookmarks(for: book)
+        }
+        .sheet(isPresented: $showingAddBookmark) {
+            AddBookmarkView(
+                isPresented: $showingAddBookmark,
+                position: audioPlayer.currentPosition
+            ) { label, note in
+                Task {
+                    await bookmarkManager.addBookmark(
+                        for: book,
+                        position: audioPlayer.currentPosition,
+                        label: label,
+                        note: note
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $showingEditBookmark) {
+            if let bookmark = bookmarkToEdit {
+                EditBookmarkView(
+                    isPresented: $showingEditBookmark,
+                    bookmark: bookmark,
+                    onSave: { label, note in
+                        Task {
+                            await bookmarkManager.updateBookmark(bookmark, label: label, note: note)
+                        }
+                    },
+                    onDelete: {
+                        Task {
+                            await bookmarkManager.deleteBookmark(bookmark)
+                        }
+                    }
+                )
+            }
         }
         .onDisappear {
             // Save position immediately when navigating away
