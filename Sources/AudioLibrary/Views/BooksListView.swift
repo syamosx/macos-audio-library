@@ -11,6 +11,8 @@ struct BooksListView: View {
     @Bindable var viewModel: LibraryViewModel
     @State private var searchText = ""
     @State private var sortOrder: SortOrder = .recentlyPlayed
+    @State private var importManager = ImportManager()
+    @State private var showingImportSheet = false
     
     enum SortOrder: String, CaseIterable {
         case recentlyPlayed = "Recently Played"
@@ -66,9 +68,18 @@ struct BooksListView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        // Phase 3: Import books
-                        print("Import books tapped")
+                    Menu {
+                        Button {
+                            importFiles()
+                        } label: {
+                            Label("Import Files", systemImage: "doc.badge.plus")
+                        }
+                        
+                        Button {
+                            importFolder()
+                        } label: {
+                            Label("Import Folder", systemImage: "folder.badge.plus")
+                        }
                     } label: {
                         Label("Import", systemImage: "plus")
                     }
@@ -95,6 +106,36 @@ struct BooksListView: View {
                 }
             }
             .navigationTitle("Books")
+            .sheet(isPresented: $showingImportSheet) {
+                ImportProgressView(importManager: importManager, isPresented: $showingImportSheet)
+            }
+        }
+    }
+    
+    // MARK: - Import Actions
+    
+    private func importFiles() {
+        guard let urls = importManager.selectFiles(), !urls.isEmpty else { return }
+        showingImportSheet = true
+        Task {
+            await importManager.importFiles(urls)
+            viewModel.refreshBooks()
+        }
+    }
+    
+    private func importFolder() {
+        guard let folderURL = importManager.selectFolder() else { return }
+        let audioFiles = importManager.scanFolder(folderURL)
+        
+        guard !audioFiles.isEmpty else {
+            print("No audio files found in folder")
+            return
+        }
+        
+        showingImportSheet = true
+        Task {
+            await importManager.importFiles(audioFiles)
+            viewModel.refreshBooks()
         }
     }
 }

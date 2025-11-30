@@ -2,18 +2,19 @@
 //  BookDetailView.swift
 //  AudioLibrary
 //
-//  Detailed view of a book with playback controls (Phase 1: UI only)
+//  Detailed view of a book with real playback controls (Phase 3)
 //
 
 import SwiftUI
+import GRDB
 
 struct BookDetailView: View {
     let book: Book
     @Bindable var viewModel: LibraryViewModel
     
-    @State private var isPlaying = false
-    @State private var currentPosition: Double = 0
-    @State private var playbackSpeed: Double = 1.0
+    @StateObject private var audioPlayer = AudioPlayer()
+    @State private var fileURL: URL?
+    @State private var loadError: String?
     
     var body: some View {
         ScrollView {
@@ -58,27 +59,45 @@ struct BookDetailView: View {
                     }
                 }
                 
+                // Load error display
+                if let error = loadError {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .background(Color.yellow.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    
+                    Button("Locate File") {
+                        locateFile()
+                    }
+                }
+                
                 // Playback controls
                 VStack(spacing: 16) {
                     // Progress slider
                     VStack(alignment: .leading, spacing: 4) {
                         Slider(value: Binding(
-                            get: { currentPosition },
+                            get: { audioPlayer.currentPosition },
                             set: { newValue in
-                                currentPosition = newValue
-                                // Phase 3: Seek audio player
+                                audioPlayer.seek(to: newValue)
                             }
                         ), in: 0...(book.durationSeconds ?? 1000))
+                        .disabled(fileURL == nil)
                         
                         HStack {
-                            Text(formatTime(currentPosition))
+                            Text(formatTime(audioPlayer.currentPosition))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                             
                             Spacer()
                             
-                            Text(formatTime(book.durationSeconds ?? 0))
+                            Text(formatTime(audioPlayer.duration))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
@@ -88,29 +107,29 @@ struct BookDetailView: View {
                     // Play/Pause and skip buttons
                     HStack(spacing: 40) {
                         Button {
-                            // Phase 3: Skip backward
-                            currentPosition = max(0, currentPosition - 15)
+                            audioPlayer.skipBackward()
                         } label: {
                             Image(systemName: "gobackward.15")
                                 .font(.title)
                         }
+                        .disabled(fileURL == nil)
                         
                         Button {
-                            isPlaying.toggle()
-                            // Phase 3: Toggle audio playback
+                            audioPlayer.togglePlayPause()
                         } label: {
-                            Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                                 .font(.system(size: 64))
                         }
                         .buttonStyle(.plain)
+                        .disabled(fileURL == nil)
                         
                         Button {
-                            // Phase 3: Skip forward
-                            currentPosition = min(book.durationSeconds ?? 0, currentPosition + 15)
+                            audioPlayer.skipForward()
                         } label: {
                             Image(systemName: "goforward.15")
                                 .font(.title)
                         }
+                        .disabled(fileURL == nil)
                     }
                     
                     // Speed control
@@ -119,7 +138,7 @@ struct BookDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         
-                        Picker("Speed", selection: $playbackSpeed) {
+                        Picker("Speed", selection: $audioPlayer.playbackSpeed) {
                             Text("0.5×").tag(0.5)
                             Text("0.75×").tag(0.75)
                             Text("1.0×").tag(1.0)
@@ -129,6 +148,7 @@ struct BookDetailView: View {
                         }
                         .pickerStyle(.menu)
                         .frame(width: 100)
+                        .disabled(fileURL == nil)
                         
                         Spacer()
                     }
@@ -167,6 +187,7 @@ struct BookDetailView: View {
                         } label: {
                             Label("Add Bookmark", systemImage: "bookmark.fill")
                         }
+                        .disabled(fileURL == nil)
                     }
                     
                     Text("No bookmarks yet")
@@ -185,8 +206,101 @@ struct BookDetailView: View {
         }
         .frame(minWidth: 500, idealWidth: 600)
         .navigationTitle(book.title)
-        .onAppear {
-            currentPosition = book.lastPositionSeconds
+        .task {
+            await loadAudio()
+        }
+        .onChange(of: audioPlayer.currentPosition) { _, newPosition in
+            // Save position periodically
+            if Int(newPosition) % 10 == 0 {
+                viewModel.updatePosition(for: book, position: newPosition)
+            }
+        }
+    }
+    
+    // MARK: - Audio Loading
+    
+    private func loadAudio() async {
+        // Find file path from device_state
+        do {
+            let db = DatabaseManager.shared.database
+            let deviceState = try await db.read { db in
+                try DeviceState
+                    .filter(DeviceState.Columns.bookContentHash == book.contentHash)
+                    .filter(DeviceState.Columns.deviceID == "mac")
+                    .fetchOne(db)
+            }
+            
+            guard let deviceState = deviceState else {
+                await MainActor.run {
+                    loadError = "File location not found"
+                }
+                return
+            }
+            
+            let url = URL(fileURLWithPath: deviceState.path)
+            
+            // Verify file exists
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                await MainActor.run {
+                    loadError = "File not found at \(deviceState.path)"
+                }
+                return
+            }
+            
+            // Load audio
+            try audioPlayer.load(book: book, fileURL: url)
+            
+            await MainActor.run {
+                fileURL = url
+                loadError = nil
+            }
+            
+        } catch {
+            await MainActor.run {
+                loadError = "Failed to load: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    private func locateFile() {
+        let panel = NSOpenPanel()
+        panel.message = "Locate \(book.title)"
+        panel.prompt = "Select"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        
+        if panel.runModal() == .OK, let url = panel.urls.first {
+            Task {
+                // Verify hash matches
+                do {
+                    let hash = try FileHasher.sha256(of: url)
+                    if hash == book.contentHash {
+                        // Update device state
+                        try await DatabaseManager.shared.database.write { db in
+                            if var state = try DeviceState
+                                .filter(DeviceState.Columns.bookContentHash == book.contentHash)
+                                .filter(DeviceState.Columns.deviceID == "mac")
+                                .fetchOne(db) {
+                                state.path = url.path
+                                state.status = .good
+                                state.lastCheckedAt = Date()
+                                try state.update(db)
+                            }
+                        }
+                        
+                        await loadAudio()
+                    } else {
+                        await MainActor.run {
+                            loadError = "File hash doesn't match - this is a different file"
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        loadError = "Failed to verify file: \(error.localizedDescription)"
+                    }
+                }
+            }
         }
     }
     
@@ -202,4 +316,3 @@ struct BookDetailView: View {
         }
     }
 }
-
