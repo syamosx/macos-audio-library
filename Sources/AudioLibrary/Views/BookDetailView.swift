@@ -223,6 +223,21 @@ struct BookDetailView: View {
         // Find file path from device_state
         do {
             let db = DatabaseManager.shared.database
+            
+            // Fetch fresh book data from database to get latest position
+            let freshBook = try await db.read { db in
+                try Book
+                    .filter(Book.Columns.contentHash == book.contentHash)
+                    .fetchOne(db)
+            }
+            
+            guard let freshBook = freshBook else {
+                await MainActor.run {
+                    loadError = "Book not found in database"
+                }
+                return
+            }
+            
             let deviceState = try await db.read { db in
                 try DeviceState
                     .filter(DeviceState.Columns.bookContentHash == book.contentHash)
@@ -247,8 +262,8 @@ struct BookDetailView: View {
                 return
             }
             
-            // Load audio
-            try audioPlayer.load(book: book, fileURL: url)
+            // Load audio with fresh book data (includes latest saved position)
+            try audioPlayer.load(book: freshBook, fileURL: url)
             
             await MainActor.run {
                 fileURL = url
