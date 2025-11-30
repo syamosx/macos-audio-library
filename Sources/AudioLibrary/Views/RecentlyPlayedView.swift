@@ -79,7 +79,7 @@ struct RecentlyPlayedRowView: View {
                         .monospacedDigit()
                 }
                 
-                Text(formatPosition(book.lastPositionSeconds, of: book.durationSeconds))
+                Text(formatPosition(book.lastPositionSeconds, of: book.durationSeconds ?? 0))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

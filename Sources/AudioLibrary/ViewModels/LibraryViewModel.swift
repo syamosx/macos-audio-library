@@ -2,11 +2,12 @@
 //  LibraryViewModel.swift
 //  AudioLibrary
 //
-//  ViewModel for managing library state (Phase 1: Mock Data)
+//  ViewModel for managing library state with database persistence
 //
 
 import Foundation
 import Observation
+import GRDB
 
 @Observable
 class LibraryViewModel {
@@ -14,24 +15,57 @@ class LibraryViewModel {
     var recentlyPlayed: [Book] = []
     var selectedBook: Book?
     
+    private let bookDAO: BookDAO
+    private let logDAO: LogDAO
+    
     init() {
-        loadMockData()
+        // Initialize database
+        do {
+            try DatabaseManager.shared.setup()
+            self.bookDAO = BookDAO()
+            self.logDAO = LogDAO()
+            
+            // Load initial data
+            Task {
+                await loadBooks()
+            }
+        } catch {
+            print("❌ Database initialization failed: \(error)")
+            // Fall back to DAOs with default database
+            self.bookDAO = BookDAO()
+            self.logDAO = LogDAO()
+        }
     }
     
-    // MARK: - Mock Data (Phase 1)
+    // MARK: - Data Loading
     
-    private func loadMockData() {
+    @MainActor
+    func loadBooks() async {
+        do {
+            books = try bookDAO.fetchAll()
+            recentlyPlayed = try bookDAO.fetchRecentlyPlayed()
+            try logDAO.log(type: "library_loaded", payload: ["count": books.count])
+        } catch {
+            print("❌ Failed to load books: \(error)")
+            // Load sample data if database is empty
+            if books.isEmpty {
+                await loadSampleData()
+            }
+        }
+    }
+    
+    @MainActor
+    private func loadSampleData() async {
         let now = Date()
-        
-        books = [
+        let sampleBooks = [
             Book(
-                id: 1,
+                id: nil,
                 contentHash: "abc123def456",
                 originalFilename: "Foundation.m4b",
                 title: "Foundation",
                 status: .active,
                 fileSizeBytes: 425_984_000,
-                durationSeconds: 14_280, // 3h 58m
+                durationSeconds: 14_280,
                 tags: ["Sci-Fi", "Classic"],
                 lastPositionSeconds: 3_600,
                 lastTimePlayed: now.addingTimeInterval(-7200),
@@ -40,13 +74,13 @@ class LibraryViewModel {
                 updatedAt: now.addingTimeInterval(-7200)
             ),
             Book(
-                id: 2,
+                id: nil,
                 contentHash: "ghi789jkl012",
                 originalFilename: "Project Hail Mary.m4b",
                 title: "Project Hail Mary",
                 status: .active,
                 fileSizeBytes: 612_350_000,
-                durationSeconds: 16_020, // 4h 27m
+                durationSeconds: 16_020,
                 tags: ["Sci-Fi", "Adventure"],
                 lastPositionSeconds: 8_400,
                 lastTimePlayed: now.addingTimeInterval(-3600),
@@ -55,13 +89,13 @@ class LibraryViewModel {
                 updatedAt: now.addingTimeInterval(-3600)
             ),
             Book(
-                id: 3,
+                id: nil,
                 contentHash: "mno345pqr678",
                 originalFilename: "Dune.m4b",
                 title: "Dune",
                 status: .active,
                 fileSizeBytes: 721_420_000,
-                durationSeconds: 21_240, // 5h 54m
+                durationSeconds: 21_240,
                 tags: ["Sci-Fi", "Epic", "Classic"],
                 lastPositionSeconds: 120,
                 lastTimePlayed: now.addingTimeInterval(-86400 * 2),
@@ -70,13 +104,13 @@ class LibraryViewModel {
                 updatedAt: now.addingTimeInterval(-86400 * 2)
             ),
             Book(
-                id: 4,
+                id: nil,
                 contentHash: "stu901vwx234",
                 originalFilename: "The Three-Body Problem.m4b",
                 title: "The Three-Body Problem",
                 status: .active,
                 fileSizeBytes: 405_120_000,
-                durationSeconds: 13_140, // 3h 39m
+                durationSeconds: 13_140,
                 tags: ["Sci-Fi", "Hard SF"],
                 lastPositionSeconds: 0,
                 lastTimePlayed: nil,
@@ -85,13 +119,13 @@ class LibraryViewModel {
                 updatedAt: now.addingTimeInterval(-86400 * 5)
             ),
             Book(
-                id: 5,
+                id: nil,
                 contentHash: "yza567bcd890",
                 originalFilename: "Neuromancer.m4b",
                 title: "Neuromancer",
                 status: .active,
                 fileSizeBytes: 365_840_000,
-                durationSeconds: 11_880, // 3h 18m
+                durationSeconds: 11_880,
                 tags: ["Sci-Fi", "Cyberpunk", "Classic"],
                 lastPositionSeconds: 11_880,
                 lastTimePlayed: now.addingTimeInterval(-86400 * 10),
@@ -101,33 +135,73 @@ class LibraryViewModel {
             )
         ]
         
-        // Recently played are the books with recent lastTimePlayed
-        recentlyPlayed = books
-            .filter { $0.lastTimePlayed != nil }
-            .sorted { ($0.lastTimePlayed ?? .distantPast) > ($1.lastTimePlayed ?? .distantPast) }
+        do {
+            for book in sampleBooks {
+                _ = try bookDAO.insert(book)
+            }
+            try logDAO.log(type: "sample_data_loaded", payload: ["count": sampleBooks.count])
+            await loadBooks()
+        } catch {
+            print("❌ Failed to load sample data: \(error)")
+        }
     }
     
-    // MARK: - Future DB Methods (Phase 2+)
+    // MARK: - CRUD Operations
     
     func refreshBooks() {
-        // Phase 2: Load from database
-        print("Refresh books from database")
+        Task {
+            await loadBooks()
+        }
     }
     
     func addBook(_ book: Book) {
-        // Phase 3: Add to database and scan file
-        books.append(book)
+        Task {
+            do {
+                _ = try bookDAO.insert(book)
+                try logDAO.log(type: "book_added", bookContentHash: book.contentHash)
+                await loadBooks()
+            } catch {
+                print("❌ Failed to add book: \(error)")
+            }
+        }
     }
     
     func updateBook(_ book: Book) {
-        // Phase 2: Update in database
-        if let index = books.firstIndex(where: { $0.id == book.id }) {
-            books[index] = book
+        Task {
+            do {
+                try bookDAO.update(book)
+                try logDAO.log(type: "book_updated", bookContentHash: book.contentHash)
+                await loadBooks()
+            } catch {
+                print("❌ Failed to update book: \(error)")
+            }
         }
     }
     
     func deleteBook(_ book: Book) {
-        // Phase 2: Mark as deleted in database
-        books.removeAll { $0.id == book.id }
+        Task {
+            do {
+                try bookDAO.delete(contentHash: book.contentHash)
+                try logDAO.log(type: "book_deleted", bookContentHash: book.contentHash)
+                await loadBooks()
+            } catch {
+                print("❌ Failed to delete book: \(error)")
+            }
+        }
+    }
+    
+    func updatePosition(for book: Book, position: Double) {
+        Task {
+            do {
+                try bookDAO.updatePosition(contentHash: book.contentHash, position: position)
+                try logDAO.log(
+                    type: "position_updated",
+                    bookContentHash: book.contentHash,
+                    payload: ["position": position]
+                )
+            } catch {
+                print("❌ Failed to update position: \(error)")
+            }
+        }
     }
 }

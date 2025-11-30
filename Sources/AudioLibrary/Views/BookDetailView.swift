@@ -68,7 +68,7 @@ struct BookDetailView: View {
                                 currentPosition = newValue
                                 // Phase 3: Seek audio player
                             }
-                        ), in: 0...book.durationSeconds)
+                        ), in: 0...(book.durationSeconds ?? 1000))
                         
                         HStack {
                             Text(formatTime(currentPosition))
@@ -78,7 +78,7 @@ struct BookDetailView: View {
                             
                             Spacer()
                             
-                            Text(formatTime(book.durationSeconds))
+                            Text(formatTime(book.durationSeconds ?? 0))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
@@ -106,7 +106,7 @@ struct BookDetailView: View {
                         
                         Button {
                             // Phase 3: Skip forward
-                            currentPosition = min(book.durationSeconds, currentPosition + 15)
+                            currentPosition = min(book.durationSeconds ?? 0, currentPosition + 15)
                         } label: {
                             Image(systemName: "goforward.15")
                                 .font(.title)
@@ -138,12 +138,12 @@ struct BookDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 
                 // Notes section
-                if !book.notes.isEmpty {
+                if let notes = book.notes, !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes")
                             .font(.headline)
                         
-                        Text(book.notes)
+                        Text(notes)
                             .font(.body)
                             .foregroundStyle(.secondary)
                     }
