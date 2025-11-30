@@ -1,0 +1,19 @@
+.DS_Store
+.build/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+*.swp
+*.swo
+*~
+.swiftpm/
+Packages/
+build/
+
+# Database files (Phase 2+)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
