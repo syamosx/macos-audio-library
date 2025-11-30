@@ -12,7 +12,7 @@ struct BookDetailView: View {
     let book: Book
     @Bindable var viewModel: LibraryViewModel
     
-    @StateObject private var audioPlayer = AudioPlayer()
+    @EnvironmentObject var audioPlayer: AudioPlayer
     @StateObject private var bookmarkManager = BookmarkManager()
     @State private var fileURL: URL?
     @State private var loadError: String?
@@ -21,7 +21,8 @@ struct BookDetailView: View {
     @State private var bookmarkToEdit: Bookmark?
     
     var body: some View {
-        ScrollView {
+        ZStack(alignment: .bottom) {
+            ScrollView {
             VStack(spacing: 24) {
                 // Album Artwork
                 RoundedRectangle(cornerRadius: 12)
@@ -117,6 +118,8 @@ struct BookDetailView: View {
                                 .font(.title)
                         }
                         .disabled(fileURL == nil)
+                        .accessibilityLabel("Skip backward 15 seconds")
+                        .keyboardShortcut(.leftArrow, modifiers: [])
                         
                         Button {
                             audioPlayer.togglePlayPause()
@@ -126,6 +129,8 @@ struct BookDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(fileURL == nil)
+                        .accessibilityLabel(audioPlayer.isPlaying ? "Pause" : "Play")
+                        .keyboardShortcut(.space, modifiers: [])
                         
                         Button {
                             audioPlayer.skipForward()
@@ -134,6 +139,8 @@ struct BookDetailView: View {
                                 .font(.title)
                         }
                         .disabled(fileURL == nil)
+                        .accessibilityLabel("Skip forward 15 seconds")
+                        .keyboardShortcut(.rightArrow, modifiers: [])
                     }
                     
                     // Speed control
@@ -222,6 +229,10 @@ struct BookDetailView: View {
         }
         .frame(minWidth: 500, idealWidth: 600)
         .navigationTitle(book.title)
+        
+        // Tech Console at bottom
+        MiniConsoleView()
+    }
         .task {
             await loadAudio()
             await bookmarkManager.loadBookmarks(for: book)
@@ -259,6 +270,23 @@ struct BookDetailView: View {
                 )
             }
         }
+        .playbackKeyboardShortcuts(
+            onPlayPause: {
+                if fileURL != nil {
+                    audioPlayer.togglePlayPause()
+                }
+            },
+            onSkipBackward: {
+                if fileURL != nil {
+                    audioPlayer.skipBackward(15)
+                }
+            },
+            onSkipForward: {
+                if fileURL != nil {
+                    audioPlayer.skipForward(15)
+                }
+            }
+        )
         .onDisappear {
             // Save position immediately when navigating away
             let currentPos = audioPlayer.currentPosition

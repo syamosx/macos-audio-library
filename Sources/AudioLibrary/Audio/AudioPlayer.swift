@@ -66,7 +66,7 @@ class AudioPlayer: NSObject, ObservableObject {
             player?.currentTime = currentPosition
         }
         
-        print("✅ Loaded audio: \(book.title) (\(formatTime(duration)))")
+        ConsoleManager.shared.log("Loaded audio: \(book.title) (\(formatTime(duration)))", type: .success)
     }
     
     func play() {
@@ -77,7 +77,7 @@ class AudioPlayer: NSObject, ObservableObject {
         isPlaying = true
         startUpdates()
         
-        print("▶️ Playing at \(playbackSpeed)×")
+        ConsoleManager.shared.log("Playing at \(playbackSpeed)×", type: .info)
     }
     
     func pause() {
@@ -86,7 +86,7 @@ class AudioPlayer: NSObject, ObservableObject {
         stopUpdates()
         savePosition()
         
-        print("⏸ Paused at \(formatTime(currentPosition))")
+        ConsoleManager.shared.log("Paused at \(formatTime(currentPosition))", type: .info)
     }
     
     func stop() {
@@ -114,7 +114,7 @@ class AudioPlayer: NSObject, ObservableObject {
         // Save position after seeking
         savePosition()
         
-        print("⏩ Seeked to \(formatTime(clampedPosition))")
+        ConsoleManager.shared.log("Seeked to \(formatTime(clampedPosition))", type: .info)
     }
     
     func skipForward(_ seconds: Double = 15) {
@@ -148,7 +148,7 @@ class AudioPlayer: NSObject, ObservableObject {
     private func savePosition() {
         // Trigger callback to save position immediately
         onPositionSave?(currentPosition)
-        print("💾 Saving position: \(formatTime(currentPosition))")
+        ConsoleManager.shared.log("Saving position: \(formatTime(currentPosition))", type: .info)
     }
     
     // MARK: - Helpers
@@ -179,13 +179,13 @@ extension AudioPlayer: AVAudioPlayerDelegate {
             player.currentTime = 0
             savePosition()
             
-            print("✅ Playback finished")
+            ConsoleManager.shared.log("Playback finished", type: .success)
             onPlaybackFinished?()
         }
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print("❌ Audio decode error: \(error?.localizedDescription ?? "unknown")")
+        ConsoleManager.shared.log("Audio decode error: \(error?.localizedDescription ?? "unknown")", type: .error)
         isPlaying = false
         stopUpdates()
     }
