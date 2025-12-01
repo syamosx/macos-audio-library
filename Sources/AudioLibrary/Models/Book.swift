@@ -13,6 +13,8 @@ struct Book: Identifiable, Hashable {
     var contentHash: String
     var originalFilename: String?
     var title: String
+    var author: String
+    var artworkPath: String?
     var status: BookStatus
     var fileSizeBytes: Int64?
     var durationSeconds: Double?
@@ -63,6 +65,8 @@ extension Book: Codable, FetchableRecord, MutablePersistableRecord {
         static let contentHash = Column(CodingKeys.contentHash)
         static let originalFilename = Column(CodingKeys.originalFilename)
         static let title = Column(CodingKeys.title)
+        static let author = Column(CodingKeys.author)
+        static let artworkPath = Column(CodingKeys.artworkPath)
         static let status = Column(CodingKeys.status)
         static let fileSizeBytes = Column(CodingKeys.fileSizeBytes)
         static let durationSeconds = Column(CodingKeys.durationSeconds)
@@ -79,6 +83,8 @@ extension Book: Codable, FetchableRecord, MutablePersistableRecord {
         case contentHash = "content_hash"
         case originalFilename = "original_filename"
         case title
+        case author
+        case artworkPath = "artwork_path"
         case status
         case fileSizeBytes = "file_size_bytes"
         case durationSeconds = "duration_seconds"
@@ -105,6 +111,8 @@ extension Book: Codable, FetchableRecord, MutablePersistableRecord {
         contentHash = try container.decode(String.self, forKey: .contentHash)
         originalFilename = try container.decodeIfPresent(String.self, forKey: .originalFilename)
         title = try container.decode(String.self, forKey: .title)
+        author = try container.decodeIfPresent(String.self, forKey: .author) ?? "Unknown Author"
+        artworkPath = try container.decodeIfPresent(String.self, forKey: .artworkPath)
         status = try container.decode(BookStatus.self, forKey: .status)
         fileSizeBytes = try container.decodeIfPresent(Int64.self, forKey: .fileSizeBytes)
         durationSeconds = try container.decodeIfPresent(Double.self, forKey: .durationSeconds)
@@ -130,6 +138,8 @@ extension Book: Codable, FetchableRecord, MutablePersistableRecord {
         try container.encode(contentHash, forKey: .contentHash)
         try container.encodeIfPresent(originalFilename, forKey: .originalFilename)
         try container.encode(title, forKey: .title)
+        try container.encode(author, forKey: .author)
+        try container.encodeIfPresent(artworkPath, forKey: .artworkPath)
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(fileSizeBytes, forKey: .fileSizeBytes)
         try container.encodeIfPresent(durationSeconds, forKey: .durationSeconds)

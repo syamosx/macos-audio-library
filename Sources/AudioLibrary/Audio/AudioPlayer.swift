@@ -8,8 +8,11 @@
 import Foundation
 import AVFoundation
 import Combine
+import GRDB
 
 class AudioPlayer: NSObject, ObservableObject {
+    static let shared = AudioPlayer()
+    
     // MARK: - Published State
     
     @Published var isPlaying: Bool = false
@@ -46,6 +49,35 @@ class AudioPlayer: NSObject, ObservableObject {
     
     // MARK: - Playback Control
     
+    func load(book: Book) {
+        Task {
+            do {
+                // Fetch device state to find file path
+                let db = DatabaseManager.shared.database
+                let deviceState = try await db.read { db in
+                    try DeviceState
+                        .filter(DeviceState.Columns.bookContentHash == book.contentHash)
+                        .filter(DeviceState.Columns.deviceID == "mac")
+                        .fetchOne(db)
+                }
+                
+                if let path = deviceState?.path {
+                    let url = URL(fileURLWithPath: path)
+                    if FileManager.default.fileExists(atPath: url.path) {
+                        try load(book: book, fileURL: url)
+                        play()
+                    } else {
+                        ConsoleManager.shared.log("❌ File not found at \(path)")
+                    }
+                } else {
+                    ConsoleManager.shared.log("❌ No file path found for book: \(book.title)")
+                }
+            } catch {
+                ConsoleManager.shared.log("❌ Failed to load book: \(error.localizedDescription)")
+            }
+        }
+    }
+    
     func load(book: Book, fileURL: URL) throws {
         // Stop current playback
         stop()
@@ -66,7 +98,7 @@ class AudioPlayer: NSObject, ObservableObject {
             player?.currentTime = currentPosition
         }
         
-        ConsoleManager.shared.log("Loaded audio: \(book.title) (\(formatTime(duration)))", type: .success)
+        ConsoleManager.shared.log("✅ Loaded audio: \(book.title) (\(formatTime(duration)))")
     }
     
     func play() {
@@ -77,7 +109,7 @@ class AudioPlayer: NSObject, ObservableObject {
         isPlaying = true
         startUpdates()
         
-        ConsoleManager.shared.log("Playing at \(playbackSpeed)×", type: .info)
+        ConsoleManager.shared.log("▶️ Playing at \(playbackSpeed)×")
     }
     
     func pause() {
@@ -86,7 +118,7 @@ class AudioPlayer: NSObject, ObservableObject {
         stopUpdates()
         savePosition()
         
-        ConsoleManager.shared.log("Paused at \(formatTime(currentPosition))", type: .info)
+        ConsoleManager.shared.log("⏸ Paused at \(formatTime(currentPosition))")
     }
     
     func stop() {
@@ -114,7 +146,11 @@ class AudioPlayer: NSObject, ObservableObject {
         // Save position after seeking
         savePosition()
         
-        ConsoleManager.shared.log("Seeked to \(formatTime(clampedPosition))", type: .info)
+        ConsoleManager.shared.log("⏩ Seeked to \(formatTime(clampedPosition))")
+    }
+    
+    func seek(by seconds: Double) {
+        seek(to: currentPosition + seconds)
     }
     
     func skipForward(_ seconds: Double = 15) {
@@ -148,7 +184,7 @@ class AudioPlayer: NSObject, ObservableObject {
     private func savePosition() {
         // Trigger callback to save position immediately
         onPositionSave?(currentPosition)
-        ConsoleManager.shared.log("Saving position: \(formatTime(currentPosition))", type: .info)
+        ConsoleManager.shared.log("💾 Saving position: \(formatTime(currentPosition))")
     }
     
     // MARK: - Helpers
@@ -179,13 +215,13 @@ extension AudioPlayer: AVAudioPlayerDelegate {
             player.currentTime = 0
             savePosition()
             
-            ConsoleManager.shared.log("Playback finished", type: .success)
+            ConsoleManager.shared.log("✅ Playback finished")
             onPlaybackFinished?()
         }
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        ConsoleManager.shared.log("Audio decode error: \(error?.localizedDescription ?? "unknown")", type: .error)
+        ConsoleManager.shared.log("❌ Audio decode error: \(error?.localizedDescription ?? "unknown")")
         isPlaying = false
         stopUpdates()
     }

@@ -10,29 +10,31 @@ import SwiftUI
 @main
 struct AudioLibraryApp: App {
     @StateObject private var audioPlayer = AudioPlayer()
+    @State private var libraryViewModel = LibraryViewModel()
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 900, idealWidth: 1200, minHeight: 600, idealHeight: 800)
-                .environmentObject(audioPlayer)
+                .environment(libraryViewModel)
+                .frame(minWidth: libraryViewModel.isSidebarVisible ? 600 : 350, minHeight: 450)
+                .background(Color(red: 0.12, green: 0.12, blue: 0.13))
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact)
         .commands {
-            SidebarCommands()
+            SidebarCommands() // Standard sidebar commands
             
-            CommandGroup(replacing: .importExport) {
-                Button("Export Database...") {
-                    _ = ExportManager.shared.exportDatabase()
+            CommandMenu("Library") {
+                Button("Refresh Library") {
+                    libraryViewModel.refreshBooks()
                 }
-                .keyboardShortcut("E", modifiers: [.command, .shift])
+                .keyboardShortcut("r", modifiers: .command)
                 
-                Button("Import Database...") {
-                    _ = ExportManager.shared.importDatabase()
+                Button("Import Files...") {
+                    libraryViewModel.importFiles()
                 }
-                .keyboardShortcut("I", modifiers: [.command, .shift])
+                .keyboardShortcut("i", modifiers: .command)
             }
         }
-        .windowStyle(.automatic)
-        .defaultSize(width: 1200, height: 800)
     }
 }

@@ -2,181 +2,179 @@
 //  PlayerMainView.swift
 //  AudioLibrary
 //
-//  Persistent player view - the main stage of the app
+//  The persistent "Main Stage" player view
 //
 
 import SwiftUI
 
 struct PlayerMainView: View {
-    @EnvironmentObject var audioPlayer: AudioPlayer
     @Bindable var viewModel: LibraryViewModel
+    @StateObject private var audioPlayer = AudioPlayer.shared
     
     var body: some View {
-        ZStack(alignment: .bottom) {
+        VStack {
+            // --- Top Bar (Traffic Light Spacer & Toggle) ---
+            HStack {
+                Spacer().frame(width: 60) // Traffic light spacer
+                Spacer()
+                Button(action: viewModel.toggleSidebar) {
+                    Image(systemName: "sidebar.right")
+                        .font(.system(size: 16))
+                        .foregroundColor(.gray)
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.05)))
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Sidebar")
+            }
+            .padding(.top, 50)
+            .padding(.trailing, 20)
+            
+            Spacer()
+            
+            // --- Artwork ---
             if let book = audioPlayer.currentBook {
-                // Player with loaded book
-                PlayerContentView(book: book, viewModel: viewModel)
+                ArtworkView(artworkPath: book.artworkPath, size: 320)
+                    .frame(maxWidth: 320, maxHeight: 320)
+                    .cornerRadius(6)
+                    .shadow(color: .black.opacity(0.5), radius: 25, x: 0, y: 15)
             } else {
-                // Ready state
-                PlayerReadyState()
+                // Placeholder
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color(red: 0.15, green: 0.15, blue: 0.16))
+                    .frame(width: 300, height: 300)
+                    .overlay(Text("Select Book").font(.caption).foregroundColor(.gray.opacity(0.5)))
             }
             
-            // Tech Console at bottom
-            MiniConsoleView()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-}
-
-// MARK: - Player Content (When book is loaded)
-
-struct PlayerContentView: View {
-    let book: Book
-    @Bindable var viewModel: LibraryViewModel
-    @EnvironmentObject var audioPlayer: AudioPlayer
-    
-    var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
+            Spacer().frame(height: 30)
             
-            // Album  Artwork
-            RoundedRectangle(cornerRadius: 16)
-                .fill(LinearGradient(
-                    colors: [
-                        Color(red: 0.2, green: 0.3, blue: 0.5),
-                        Color(red: 0.3, green: 0.4, blue: 0.6)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .frame(width: 300, height: 300)
-                .shadow(radius: 20)
-            
-            // Metadata
-            VStack(spacing: 8) {
-                Text(book.title)
-                    .font(.title.bold())
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
+            // --- Track Info ---
+            VStack(spacing: 6) {
+                Text(audioPlayer.currentBook?.title ?? "No Book Selected")
+                    .font(.system(size: 32, weight: .regular, design: .serif))
+                    .tracking(1.5)
+                    .foregroundColor(Color(white: 0.95))
+                    .lineLimit(1)
                 
-                if let filename = book.originalFilename {
-                    Text(filename)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                Text(audioPlayer.currentBook?.author ?? "")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(white: 0.6))
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 40)
             
-            // Progress Scrubber
-            VStack(spacing: 8) {
-                Slider(
-                    value: Binding(
-                        get: { audioPlayer.currentPosition },
-                        set: { audioPlayer.seek(to: $0) }
-                    ),
-                    in: 0...max(audioPlayer.duration, 1)
-                )
-                .disabled(audioPlayer.duration == 0)
-                
-                HStack {
-                    Text(formatTime(audioPlayer.currentPosition))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    
-                    Spacer()
-                    
-                    Text(formatTime(audioPlayer.duration))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+            Spacer().frame(height: 30)
+            
+            // --- Scrubber ---
+            HStack(spacing: 15) {
+                Text(formatTime(audioPlayer.currentPosition)).styleMono()
+                ProgressBar(progress: audioPlayer.duration > 0 ? audioPlayer.currentPosition / audioPlayer.duration : 0)
+                    .frame(maxWidth: 350)
+                Text(formatTime(audioPlayer.duration - audioPlayer.currentPosition)).styleMono()
             }
-            .padding(.horizontal, 80)
+            .padding(.horizontal, 20)
             
-            // Playback Controls
-            HStack(spacing: 50) {
-                Button {
-                    audioPlayer.skipBackward(15)
-                } label: {
-                    Image(systemName: "gobackward.15")
-                        .font(.system(size: 32))
+            Spacer().frame(height: 25)
+            
+            // --- Controls ---
+            HStack(spacing: 40) {
+                ControlButton(icon: "backward.fill", size: 20) {
+                    audioPlayer.seek(by: -15)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip backward 15 seconds")
-                
-                Button {
+                ControlButton(icon: audioPlayer.isPlaying ? "pause.fill" : "play.fill", size: 38) {
                     audioPlayer.togglePlayPause()
-                } label: {
-                    Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 80))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(audioPlayer.isPlaying ? "Pause" : "Play")
-                
-                Button {
-                    audioPlayer.skipForward(15)
-                } label: {
-                    Image(systemName: "goforward.15")
-                        .font(.system(size: 32))
+                ControlButton(icon: "forward.fill", size: 20) {
+                    audioPlayer.seek(by: 15)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip forward 15 seconds")
             }
+            .padding(.bottom, 20)
             
-            // Speed Control
-            Menu {
-                ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0], id: \.self) { speed in
-                    Button {
-                        audioPlayer.playbackSpeed = speed
-                    } label: {
-                        HStack {
-                            Text("\(speed, specifier: "%.2f")×")
-                            if audioPlayer.playbackSpeed == speed {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Label("Speed: \(audioPlayer.playbackSpeed, specifier: "%.2f")×", systemImage: "gauge")
+            // --- Console (Conditional) ---
+            if viewModel.isSidebarVisible {
+                Spacer().frame(height: 10)
+                MiniConsoleView()
+                    .frame(height: 100)
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 20)
+                    .transition(.opacity)
+            } else {
+                Spacer().frame(height: 20)
             }
-            .menuStyle(.borderlessButton)
-            
-            Spacer()
         }
-        .padding(.bottom, 40) // Space for console
+        .onChange(of: audioPlayer.currentBook) { _, newBook in
+            updateBackgroundGlow(for: newBook)
+        }
+        .onAppear {
+            updateBackgroundGlow(for: audioPlayer.currentBook)
+        }
     }
     
-    private func formatTime(_ seconds: Double) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        let secs = Int(seconds) % 60
+    private func updateBackgroundGlow(for book: Book?) {
+        guard let path = book?.artworkPath,
+              let image = NSImage(contentsOfFile: path) else {
+            withAnimation(.easeOut(duration: 1.0)) {
+                viewModel.backgroundGlow = Color(red: 0.2, green: 0.2, blue: 0.22)
+            }
+            return
+        }
+        
+        // Calculate average color in background to avoid UI stutter
+        DispatchQueue.global(qos: .userInitiated).async {
+            let color = image.averageColor
+            DispatchQueue.main.async {
+                withAnimation(.easeOut(duration: 1.5)) {
+                    viewModel.backgroundGlow = color
+                }
+            }
+        }
+    }
+    
+    private func formatTime(_ time: TimeInterval) -> String {
+        let hours = Int(time) / 3600
+        let minutes = (Int(time) % 3600) / 60
+        let seconds = Int(time) % 60
         
         if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, secs)
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
-            return String(format: "%d:%02d", minutes, secs)
+            return String(format: "%02d:%02d", minutes, seconds)
         }
     }
 }
 
-// MARK: - Ready State (No book loaded)
-
-struct PlayerReadyState: View {
+struct ProgressBar: View {
+    let progress: Double
+    
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "waveform.circle")
-                .font(.system(size: 120))
-                .foregroundStyle(.secondary.opacity(0.5))
-            
-            Text("Ready to Play")
-                .font(.title.bold())
-                .foregroundStyle(.secondary)
-            
-            Text("Select a book from the sidebar to begin")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.1)).frame(height: 4)
+                Capsule().fill(Color(white: 0.7)).frame(width: geo.size.width * CGFloat(progress), height: 4)
+            }
         }
+        .frame(height: 4)
+    }
+}
+
+struct ControlButton: View {
+    let icon: String
+    let size: CGFloat
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: size))
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(Color(white: 0.9))
+    }
+}
+
+// MARK: - Utilities
+extension Text {
+    func styleMono() -> some View {
+        self.font(.system(size: 11, design: .monospaced))
+            .foregroundColor(Color(white: 0.4))
     }
 }

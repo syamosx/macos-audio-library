@@ -2,61 +2,40 @@
 //  ConsoleManager.swift
 //  AudioLibrary
 //
-//  Tech console for displaying system logs
+//  Manages the "Tech Console" logs
 //
 
 import Foundation
 import Combine
 
-enum LogType {
-    case info
-    case success
-    case warning
-    case error
-    
-    var emoji: String {
-        switch self {
-        case .info: return "ℹ️"
-        case .success: return "✅"
-        case .warning: return "⚠️"
-        case .error: return "❌"
-        }
-    }
-}
-
-struct ConsoleMessage: Identifiable {
-    let id = UUID()
-    let text: String
-    let type: LogType
-    let timestamp: Date
-    
-    var formatted: String {
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm:ss"
-        return "[\(timeFormatter.string(from: timestamp))] \(type.emoji) \(text)"
-    }
-}
-
 class ConsoleManager: ObservableObject {
     static let shared = ConsoleManager()
     
-    @Published var lastMessage: ConsoleMessage?
-    private var clearTimer: Timer?
+    @Published var logs: [ConsoleLog] = []
     
     private init() {}
     
-    func log(_ text: String, type: LogType = .info) {
-        let message = ConsoleMessage(text: text, type: type, timestamp: Date())
-        
-        DispatchQueue.main.async {
-            self.lastMessage = message
+    func log(_ message: String) {
+        Task { @MainActor in
+            let log = ConsoleLog(message: message, timestamp: Date())
+            logs.append(log)
+            
+            // Keep last 50 logs
+            if logs.count > 50 {
+                logs.removeFirst()
+            }
         }
-        
-        // Also print to actual console for debugging
-        print(message.formatted)
     }
     
     func clear() {
-        lastMessage = nil
+        Task { @MainActor in
+            logs.removeAll()
+        }
     }
+}
+
+struct ConsoleLog: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let timestamp: Date
 }

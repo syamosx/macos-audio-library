@@ -11,4 +11,6 @@ echo ""
 echo "Building and launching..."
 echo ""
 
+swift build
+afplay /System/Library/Sounds/Glass.aiff
 swift run AudioLibrary

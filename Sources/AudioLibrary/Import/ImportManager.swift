@@ -10,6 +10,8 @@ import AppKit
 
 @Observable
 class ImportManager {
+    static let shared = ImportManager()
+    
     private let bookDAO: BookDAO
     private let logDAO: LogDAO
     
@@ -152,22 +154,27 @@ class ImportManager {
         // Extract metadata
         let metadata = try await AudioMetadata.extract(from: fileURL)
         
-        // Create book record
-        let filename = fileURL.lastPathComponent
-        let title = metadata.title ?? fileURL.deletingPathExtension().lastPathComponent
+        // Save artwork if present
+        var artworkPath: String? = nil
+        if let artworkData = metadata.artworkData {
+            artworkPath = try saveArtwork(artworkData, contentHash: contentHash)
+        }
         
+        // Create book record
         let book = Book(
             id: nil,
             contentHash: contentHash,
-            originalFilename: filename,
-            title: title,
+            originalFilename: fileURL.lastPathComponent,
+            title: metadata.title ?? fileURL.deletingPathExtension().lastPathComponent,
+            author: metadata.artist ?? "Unknown Author",
+            artworkPath: artworkPath,
             status: .active,
             fileSizeBytes: metadata.fileSize,
             durationSeconds: metadata.duration,
             tags: [],
             lastPositionSeconds: 0,
             lastTimePlayed: nil,
-            notes: metadata.artist.map { "Artist: \($0)" },
+            notes: nil,
             createdAt: Date(),
             updatedAt: Date()
         )
@@ -180,15 +187,35 @@ class ImportManager {
         
         // Log import
         try logDAO.log(type: "file_imported", bookContentHash: contentHash, payload: [
-            "filename": filename,
-            "title": title,
+            "filename": book.originalFilename ?? "unknown",
+            "title": book.title,
             "duration": metadata.duration,
             "size": metadata.fileSize
         ])
         
-        print("✅ Imported: \(title) (\(formatDuration(metadata.duration)))")
+        ConsoleManager.shared.log("✅ Imported: \(book.title) (\(formatDuration(metadata.duration)))")
         
         return true
+    }
+    
+    // MARK: - Artwork Management
+    
+    private func saveArtwork(_ artworkData: Data, contentHash: String) throws -> String {
+        let fileManager = FileManager.default
+        let appSupport = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        
+        let artworkFolder = appSupport.appendingPathComponent("AudioLibrary/Artwork", isDirectory: true)
+        try fileManager.createDirectory(at: artworkFolder, withIntermediateDirectories: true)
+        
+        let artworkFile = artworkFolder.appendingPathComponent("\(contentHash).jpg")
+        try artworkData.write(to: artworkFile)
+        
+        return artworkFile.path
     }
     
     // MARK: - Device State Management

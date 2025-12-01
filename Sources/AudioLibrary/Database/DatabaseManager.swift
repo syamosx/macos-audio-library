@@ -113,6 +113,20 @@ class DatabaseManager {
             try db.create(index: "idx_device_state_book", on: "device_state", columns: ["book_content_hash"])
         }
         
+        // Migration v2: Add author column
+        migrator.registerMigration("v2_add_author") { db in
+            try db.alter(table: "books") { t in
+                t.add(column: "author", .text).defaults(to: "Unknown Author")
+            }
+        }
+        
+        // Migration v3: Add artwork_path column
+        migrator.registerMigration("v3_add_artwork") { db in
+            try db.alter(table: "books") { t in
+                t.add(column: "artwork_path", .text)
+            }
+        }
+        
         return migrator
     }
 }

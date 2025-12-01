@@ -2,80 +2,55 @@
 //  ContentView.swift
 //  AudioLibrary
 //
-//  Main view with NavigationSplitView for sidebar navigation
+//  Main application window view
 //
 
 import SwiftUI
 
 struct ContentView: View {
-    @State private var viewModel = LibraryViewModel()
-    @State private var selectedSection: SidebarSection? = .books
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @Environment(LibraryViewModel.self) private var viewModel
+    let baseColor = Color(red: 0.12, green: 0.12, blue: 0.13)
     
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            // Sidebar (left column)
-            SidebarView(selectedSection: $selectedSection, viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
-        } content: {
-            // Library content (middle column)
-            LibraryContentView(
-                selectedSection: selectedSection,
-                viewModel: viewModel
-            )
-            .navigationSplitViewColumnWidth(min: 250, ideal: 350, max: 500)
-        } detail: {
-            // Player (right column - persistent)
+        HStack(spacing: 0) {
+            
+            // 1. LEFT: Main Player
             PlayerMainView(viewModel: viewModel)
-        }
-        .navigationTitle("Audio Library")
-    }
-}
-
-// MARK: - Sidebar Section Enum
-
-enum SidebarSection: String, Identifiable, CaseIterable {
-    case books = "Books"
-    case extraPrivate = "Extra Private"
-    case recentlyPlayed = "Recently Played"
-    
-    var id: String { rawValue }
-    
-    var icon: String {
-        switch self {
-        case .books:
-            return "books.vertical.fill"
-        case .extraPrivate:
-            return "lock.fill"
-        case .recentlyPlayed:
-            return "clock.fill"
-        }
-    }
-}
-
-// MARK: - Library Content (Middle Column)
-
-struct LibraryContentView: View {
-    let selectedSection: SidebarSection?
-    let viewModel: LibraryViewModel
-    
-    var body: some View {
-        Group {
-            switch selectedSection {
-            case .books:
-                BooksListView(viewModel: viewModel)
-            case .extraPrivate:
-                ExtraPrivateView()
-            case .recentlyPlayed:
-                RecentlyPlayedView(viewModel: viewModel)
-            case .none:
-                ContentUnavailableView(
-                    "Select a Section",
-                    systemImage: "sidebar.left",
-                    description: Text("Choose a section from the sidebar to begin")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    ZStack {
+                        baseColor.ignoresSafeArea()
+                        // Dynamic Ambient Background
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                viewModel.backgroundGlow.opacity(0.25),
+                                baseColor
+                            ]),
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 700
+                        )
+                    }
                 )
+                .clipped()
+                .zIndex(1) // Keep Player above Sidebar during transition
+
+            // 2. MIDDLE: Divider (Visible only when sidebar is open)
+            if viewModel.isSidebarVisible {
+                Rectangle()
+                    .fill(Color.black.opacity(0.4))
+                    .frame(width: 1)
+                    .edgesIgnoringSafeArea(.vertical)
+            }
+            
+            // 3. RIGHT: Sidebar
+            if viewModel.isSidebarVisible {
+                SidebarView(viewModel: viewModel)
+                    .frame(width: 250)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(0)
             }
         }
+        .edgesIgnoringSafeArea(.all)
     }
 }
-
