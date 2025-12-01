@@ -17,3 +17,6 @@ build/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Secrets
+Secrets.swift
