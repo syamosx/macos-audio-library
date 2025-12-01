@@ -79,8 +79,16 @@ class AudioPlayer: NSObject, ObservableObject {
     }
     
     func load(book: Book, fileURL: URL) throws {
-        // Stop current playback
-        stop()
+        // Stop current playback without triggering save (since we are switching)
+        player?.stop()
+        isPlaying = false
+        stopUpdates()
+        // We might want to save the *previous* book's position here if it was playing.
+        // But stop() calls savePosition(), which we just modified to check for > 1.
+        // Let's manually save the OLD book's position before switching.
+        if let oldBook = currentBook, currentPosition > 0 {
+             onPositionSave?(currentPosition)
+        }
         
         // Create player
         player = try AVAudioPlayer(contentsOf: fileURL)
@@ -125,7 +133,11 @@ class AudioPlayer: NSObject, ObservableObject {
         player?.stop()
         isPlaying = false
         stopUpdates()
-        savePosition()
+        
+        // Only save if we have a valid position (> 1s) to avoid overwriting with 0 on load errors
+        if currentPosition > 1 {
+            savePosition()
+        }
     }
     
     func togglePlayPause() {

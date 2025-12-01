@@ -94,6 +94,9 @@ class BookDAO {
                 book.lastTimePlayed = Date()
                 book.updatedAt = Date()
                 try book.update(db)
+                print("✅ BookDAO: Updated position for '\(book.title)' to \(position)")
+            } else {
+                print("❌ BookDAO: Failed to find book with hash \(contentHash) to update position")
             }
         }
     }
