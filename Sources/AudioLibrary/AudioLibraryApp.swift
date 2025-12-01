@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct AudioLibraryApp: App {
-    @StateObject private var audioPlayer = AudioPlayer()
+    @StateObject private var audioPlayer = AudioPlayer.shared
     @State private var libraryViewModel = LibraryViewModel()
     
     var body: some Scene {

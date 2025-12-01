@@ -52,5 +52,19 @@ struct ContentView: View {
             }
         }
         .edgesIgnoringSafeArea(.all)
+        .onAppear {
+            // Connect AudioPlayer callbacks to ViewModel
+            AudioPlayer.shared.onPositionSave = { [weak viewModel] position in
+                if let book = AudioPlayer.shared.currentBook {
+                    viewModel?.updatePosition(for: book, position: position)
+                }
+            }
+            
+            AudioPlayer.shared.onPlaybackFinished = { [weak viewModel] in
+                if let book = AudioPlayer.shared.currentBook {
+                    viewModel?.updatePosition(for: book, position: 0)
+                }
+            }
+        }
     }
 }
