@@ -127,6 +127,13 @@ class DatabaseManager {
             }
         }
         
+        // Migration v4: Add dominant_color column
+        migrator.registerMigration("v4_add_dominant_color") { db in
+            try db.alter(table: "books") { t in
+                t.add(column: "dominant_color", .text)
+            }
+        }
+        
         return migrator
     }
 }

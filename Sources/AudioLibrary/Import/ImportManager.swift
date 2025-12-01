@@ -156,8 +156,13 @@ class ImportManager {
         
         // Save artwork if present
         var artworkPath: String? = nil
+        var dominantColor: String? = nil
+        
         if let artworkData = metadata.artworkData {
             artworkPath = try saveArtwork(artworkData, contentHash: contentHash)
+            
+            // AI Color Analysis
+            dominantColor = await GeminiColorService.shared.analyze(artworkData: artworkData)
         }
         
         // Create book record
@@ -168,6 +173,7 @@ class ImportManager {
             title: metadata.title ?? fileURL.deletingPathExtension().lastPathComponent,
             author: metadata.artist ?? "Unknown Author",
             artworkPath: artworkPath,
+            dominantColor: dominantColor,
             status: .active,
             fileSizeBytes: metadata.fileSize,
             durationSeconds: metadata.duration,
