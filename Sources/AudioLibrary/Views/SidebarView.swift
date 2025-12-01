@@ -57,7 +57,7 @@ struct SidebarView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 SectionHeader(text: "MY BOOKS")
                                 ForEach(viewModel.books) { book in
-                                    SidebarBookRow(book: book)
+                                    SidebarBookRow(book: book, viewModel: viewModel)
                                         .onTapGesture {
                                             // Load book logic
                                             Task {
@@ -69,9 +69,20 @@ struct SidebarView: View {
                         } else if selectedTab == .private_ {
                              VStack(alignment: .leading, spacing: 12) {
                                 SectionHeader(text: "PRIVATE BOOKS")
-                                Text("Locked")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.gray)
+                                if viewModel.privateBooks.isEmpty {
+                                    Text("No private books")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.gray)
+                                } else {
+                                    ForEach(viewModel.privateBooks) { book in
+                                        SidebarBookRow(book: book, viewModel: viewModel)
+                                            .onTapGesture {
+                                                Task {
+                                                    AudioPlayer.shared.load(book: book)
+                                                }
+                                            }
+                                    }
+                                }
                             }.padding(.horizontal, 16)
                         }
                     }
@@ -83,6 +94,7 @@ struct SidebarView: View {
 
 struct SidebarBookRow: View {
     let book: Book
+    var viewModel: LibraryViewModel? // Optional to allow preview or simple usage
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -111,9 +123,67 @@ struct SidebarBookRow: View {
                 .frame(height: 3)
                 .padding(.top, 2)
             }
+            
+            Spacer()
+            
+            // Options Button (Menu)
+            if let vm = viewModel {
+                Menu {
+                    Button {
+                        vm.togglePrivate(for: book)
+                    } label: {
+                        Label(book.status == .private_ ? "Move to Library" : "Move to Private", systemImage: book.status == .private_ ? "lock.open" : "lock")
+                    }
+                    
+                    Button {
+                        vm.recalculateColor(for: book)
+                    } label: {
+                        Label("Recalculate Color", systemImage: "paintpalette")
+                    }
+                    
+                    Divider()
+                    
+                    Button(role: .destructive) {
+                        vm.deleteBook(book)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray.opacity(0.5))
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
         }
         .contentShape(Rectangle())
         .padding(.vertical, 4)
+        .contextMenu { // Also add context menu for convenience
+            if let vm = viewModel {
+                Button {
+                    vm.togglePrivate(for: book)
+                } label: {
+                    Label(book.status == .private_ ? "Move to Library" : "Move to Private", systemImage: book.status == .private_ ? "lock.open" : "lock")
+                }
+                
+                Button {
+                    vm.recalculateColor(for: book)
+                } label: {
+                    Label("Recalculate Color", systemImage: "paintpalette")
+                }
+                
+                Divider()
+                
+                Button(role: .destructive) {
+                    vm.deleteBook(book)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 }
 

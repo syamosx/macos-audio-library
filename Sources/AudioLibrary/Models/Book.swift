@@ -35,6 +35,7 @@ struct Book: Identifiable, Hashable {
     enum BookStatus: String, Codable {
         case active
         case deleted
+        case private_ = "private"
     }
     
     // Computed properties for display

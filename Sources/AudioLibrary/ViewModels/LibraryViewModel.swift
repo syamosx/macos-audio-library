@@ -20,6 +20,7 @@ class LibraryViewModel {
     
     // MARK: - Data
     var books: [Book] = []
+    var privateBooks: [Book] = []
     var recentBooks: [Book] = []
     
     // MARK: - Configuration
@@ -85,20 +86,19 @@ class LibraryViewModel {
         }
     }
     
-
-    
     // MARK: - Data Loading
     
     @MainActor
     func loadLibrary() async {
         do {
             books = try bookDAO.fetchAll()
+            privateBooks = try bookDAO.fetchPrivate()
             recentBooks = try bookDAO.fetchRecentlyPlayed()
-            try logDAO.log(type: "library_loaded", payload: ["count": books.count])
+            try logDAO.log(type: "library_loaded", payload: ["count": books.count, "private_count": privateBooks.count])
         } catch {
             print("❌ Failed to load books: \(error)")
             // Load sample data if database is empty
-            if books.isEmpty {
+            if books.isEmpty && privateBooks.isEmpty {
                 await loadSampleData()
             }
         }
@@ -205,8 +205,10 @@ class LibraryViewModel {
             print("❌ Failed to load sample data: \(error)")
         }
     }
+
+    // ... (Skipping sample data for now in this thought process)
     
-    // MARK: - CRUD Operations
+    // MARK: - Actions
     
     func refreshBooks() {
         Task {
@@ -234,6 +236,27 @@ class LibraryViewModel {
                 await loadLibrary()
             } catch {
                 print("❌ Failed to update book: \(error)")
+            }
+        }
+    }
+    
+    func togglePrivate(for book: Book) {
+        var updatedBook = book
+        updatedBook.status = (book.status == .active) ? .private_ : .active
+        updateBook(updatedBook)
+    }
+    
+    func recalculateColor(for book: Book) {
+        guard let artworkPath = book.artworkPath,
+              let artworkData = try? Data(contentsOf: URL(fileURLWithPath: artworkPath)) else {
+            return
+        }
+        
+        Task {
+            if let newColor = await GeminiColorService.shared.analyze(artworkData: artworkData) {
+                var updatedBook = book
+                updatedBook.dominantColor = newColor
+                self.updateBook(updatedBook)
             }
         }
     }

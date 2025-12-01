@@ -36,6 +36,15 @@ class BookDAO {
         }
     }
     
+    func fetchPrivate() throws -> [Book] {
+        try db.read { db in
+            try Book
+                .filter(Book.Columns.status == Book.BookStatus.private_.rawValue)
+                .order(Book.Columns.lastTimePlayed.desc)
+                .fetchAll(db)
+        }
+    }
+    
     func fetchByContentHash(_ contentHash: String) throws -> Book? {
         try db.read { db in
             try Book

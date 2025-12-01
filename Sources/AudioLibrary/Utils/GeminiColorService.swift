@@ -12,7 +12,7 @@ struct GeminiColorService {
     static let shared = GeminiColorService()
     
     private let apiKey = "AIzaSyAGk2XxZXNwUgCdYQHmtLBi00vfcZeVUkI"
-    private let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+    private let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent"
     
     func analyze(artworkData: Data) async -> String? {
         ConsoleManager.shared.log("🎨 Starting AI color analysis...")
@@ -45,7 +45,7 @@ struct GeminiColorService {
         let base64Image = artworkData.base64EncodedString()
         
         let prompt = """
-        Analyze this image and return the single most dominant, vibrant color in HEX format (e.g. #FF0000). 
+        Analyze this image and return the single most dominant, vibrant accent color in HEX format (e.g. #FF0000). 
         Return ONLY the hex code in a JSON object like {"color": "#HEXCODE"}.
         """
         
