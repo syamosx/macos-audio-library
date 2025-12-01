@@ -114,9 +114,17 @@ struct SidebarBookRow: View {
                 
                 // Progress bar
                 GeometryReader { geometry in
+                    let accentColor = book.dominantColor.map { Color(hex: $0) } ?? Color.gray
+                    
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.1)).frame(height: 3)
-                        Capsule().fill(Color.gray.opacity(0.5))
+                        // Background (lower opacity)
+                        Capsule()
+                            .fill(accentColor.opacity(0.3))
+                            .frame(height: 3)
+                        
+                        // Foreground (normal opacity)
+                        Capsule()
+                            .fill(accentColor)
                             .frame(width: geometry.size.width * CGFloat(book.progress), height: 3)
                     }
                 }
@@ -156,6 +164,7 @@ struct SidebarBookRow: View {
                         .contentShape(Rectangle())
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden) // Hide the chevron
                 .fixedSize()
             }
         }

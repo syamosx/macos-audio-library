@@ -84,8 +84,10 @@ struct GeminiColorService {
         let base64Image = artworkData.base64EncodedString()
         
         let prompt = """
-        Analyze this image and return the single most dominant, vibrant accent color in HEX format (e.g. #FF0000). 
+        You will receive a book cover. Your job will be to look at the book and then decide on a good accent color for the cover. Focus on the actual book, the visual features, not the content of the book. The accent color should preferably be vibrant. Your response should be a single simple hex code for the color. 
+        don't choose the actual color, but the more vibrant accent color that would be inspired by the book cover. lean more toward extreme vibrant colors.
         Return ONLY the hex code in a JSON object like {"color": "#HEXCODE"}.
+        if there's an issue, like you didn't recieve the image, then respond with {"color" : "ERROR: (reason for the issue)"} or something similar. don't halucinate a color.
         """
         
         let jsonBody: [String: Any] = [
@@ -103,7 +105,11 @@ struct GeminiColorService {
                 ]
             ],
             "generationConfig": [
-                "responseMimeType": "application/json"
+                "thinkingConfig": [
+                    "thinkingLevel": "LOW",
+                ],
+                "responseMimeType": "application/json",
+                "mediaResolution": "MEDIA_RESOLUTION_HIGH"
             ]
         ]
         
