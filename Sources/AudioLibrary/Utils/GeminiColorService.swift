@@ -13,15 +13,19 @@ struct GeminiColorService {
     
     // API Key should be loaded from a secure source
     private var apiKey: String {
-        // Attempt to read from Secrets struct (which should be in a gitignored file)
-        // If Secrets struct doesn't exist (e.g. fresh clone), this will fail to compile unless we handle it gracefully or provide a dummy.
-        // For this project, we'll assume Secrets.apiKey exists if the file is present.
-        // To avoid compilation errors if Secrets.swift is missing, we can't reference it directly without it existing.
-        // A better approach for a personal project is to read from a local file at runtime or use an environment variable.
-        // Let's try reading from a specific file in the user's home directory for maximum safety against accidental commits.
+        let fileManager = FileManager.default
+        guard let appSupport = try? fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else { return "" }
         
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let secretPath = home.appendingPathComponent(".gemini_api_key")
+        let dbFolder = appSupport.appendingPathComponent("AudioLibrary", isDirectory: true)
+        // Ensure folder exists
+        try? fileManager.createDirectory(at: dbFolder, withIntermediateDirectories: true)
+        
+        let secretPath = dbFolder.appendingPathComponent("api_key")
         
         do {
             let key = try String(contentsOf: secretPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -29,6 +33,22 @@ struct GeminiColorService {
         } catch {
             return ""
         }
+    }
+    
+    func setApiKey(_ key: String) {
+        let fileManager = FileManager.default
+        guard let appSupport = try? fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else { return }
+        
+        let dbFolder = appSupport.appendingPathComponent("AudioLibrary", isDirectory: true)
+        try? fileManager.createDirectory(at: dbFolder, withIntermediateDirectories: true)
+        
+        let secretPath = dbFolder.appendingPathComponent("api_key")
+        try? key.write(to: secretPath, atomically: true, encoding: .utf8)
     }
     
     private let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent"
